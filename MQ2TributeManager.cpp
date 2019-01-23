@@ -4,6 +4,8 @@
 // MQ2TributeManager
 // Manages tribute for you based on combat status
 // Author: alt228, alt228@nerdshack.com
+// 
+// Now Saves/Loads previous settings. Still defaults to manual - wired420
 
 #include "../MQ2Plugin.h"
 
@@ -26,30 +28,70 @@ enum CombatState
 
 PreSetup("MQ2TributeManager");
 
+// Save & Load
+char szTemp[MAX_STRING], ourMode[MAX_STRING];
+bool initDone = false;
+
 //defaults
 TributeMode mode = TributeMode_Manual;
 unsigned int tributeFudge = 2000;
 #define SKIP_PULSES 80
 long SkipPulse = 0;
 
+void updateINIFn() {
+	sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
+}
+
+VOID SaveINI(VOID) {
+	updateINIFn();
+	sprintf_s(szTemp, "MQ2TributeManager");
+	WritePrivateProfileSection(szTemp, "", INIFileName);
+	if (mode == TributeMode_Auto) {
+		WritePrivateProfileString(szTemp, "Mode", "2", INIFileName);
+	}
+	else if (mode == TributeMode_OffWhenExpired) {
+		WritePrivateProfileString(szTemp, "Mode", "1", INIFileName);
+	}
+	else {
+		WritePrivateProfileString(szTemp, "Mode", "0", INIFileName);
+	}
+}
+
+VOID LoadINI(VOID) {
+	updateINIFn();
+	sprintf_s(szTemp, "MQ2TributeManager");
+	DWORD loadMode = GetPrivateProfileString(szTemp, "Mode", "", ourMode, MAX_STRING, INIFileName);
+	int setTheMode = atoi(ourMode);
+	if (setTheMode == 0) { 
+		mode = TributeMode_Manual; 
+	}
+	else if (setTheMode == 1) { 
+		mode = TributeMode_OffWhenExpired; 
+	}
+	else if (setTheMode == 2) { 
+		mode = TributeMode_Auto; 
+	}
+	initDone = true;
+}
+
 VOID SetTributeStatus(bool tributeOn)
 {
-	if( tributeOn )
+	if (tributeOn)
 	{
-		if( !(bool)((*pTributeActive) ? true : false))
+		if (!(bool)((*pTributeActive) ? true : false))
 		{
 			DebugSpewAlways("MQ2TributeManager::Turning on tribute");
-			DoCommand( (PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup" );
-			DoCommand( (PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup" );
+			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup");
+			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup");
 		}
 	}
 	else
 	{
-		if( (bool)((*pTributeActive) ? true : false))
+		if ((bool)((*pTributeActive) ? true : false))
 		{
 			DebugSpewAlways("MQ2TributeManager::Turning off tribute");
-			DoCommand( (PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup" );
-			DoCommand( (PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup" );
+			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup");
+			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup");
 		}
 	}
 }
@@ -57,11 +99,11 @@ VOID SetTributeStatus(bool tributeOn)
 VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 {
 	bool syntaxError = false;
-	if (line[0]==0)
+	if (line[0] == 0)
 	{
 		syntaxError = true;
 	}
-	
+
 	bool setMode = false;
 	TributeMode newMode = TributeMode_Unused;
 
@@ -70,51 +112,51 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 
 	bool showStatus = false;
 
-    CHAR thisArg[MAX_STRING] = {0};
+	CHAR thisArg[MAX_STRING] = { 0 };
 	int argNumber = 1;
 	bool moreArgs = true;
 
-	while(moreArgs && argNumber<10 )
+	while (moreArgs && argNumber < 10)
 	{
 		DebugSpewAlways("MQ2TributeManager:: GetArg(%i)", argNumber);
-		GetArg(thisArg,line,argNumber);
+		GetArg(thisArg, line, argNumber);
 		argNumber++;
-	
-		if( !thisArg || (strlen(thisArg)==0) )
+
+		if (!thisArg || (strlen(thisArg) == 0))
 		{
 			moreArgs = false;
 		}
-		else if(_stricmp(thisArg,"on") == 0)
+		else if (_stricmp(thisArg, "on") == 0)
 		{
 			setStatus = true;
 			newStatus = true;
 		}
-		else if(_stricmp(thisArg,"off") == 0)
+		else if (_stricmp(thisArg, "off") == 0)
 		{
 			setMode = true;
 			newMode = TributeMode_OffWhenExpired;
 			WriteChatColor("Tribute mode: off when expired");
 		}
-		else if(_stricmp(thisArg,"forceoff") == 0)
+		else if (_stricmp(thisArg, "forceoff") == 0)
 		{
 			setStatus = true;
 			newStatus = false;
 			setMode = true;
 			newMode = TributeMode_Manual;
 		}
-		else if(_stricmp(thisArg,"auto") == 0)
+		else if (_stricmp(thisArg, "auto") == 0)
 		{
 			setMode = true;
 			newMode = TributeMode_Auto;
 			WriteChatColor("Tribute mode: automatic");
 		}
-		else if(_stricmp(thisArg,"manual") == 0)
+		else if (_stricmp(thisArg, "manual") == 0)
 		{
 			setMode = true;
 			newMode = TributeMode_Manual;
 			WriteChatColor("Tribute mode: manual");
 		}
-		else if(_stricmp(thisArg,"show") == 0)
+		else if (_stricmp(thisArg, "show") == 0)
 		{
 			showStatus = true;
 		}
@@ -124,38 +166,39 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 		}
 	}
 
-	if( syntaxError )
+	if (syntaxError)
 	{
 		SyntaxError("Usage: /tribute <auto|manual|on|off|forceoff|show>");
 		return;
 	}
 
-	if( setStatus )
+	if (setStatus)
 	{
 		SetTributeStatus(newStatus);
 	}
 
-	if( setMode )
+	if (setMode)
 	{
 		mode = newMode;
+		SaveINI();
 	}
 
-	if( showStatus )
+	if (showStatus)
 	{
-		if( mode == TributeMode_Manual )
+		if (mode == TributeMode_Manual)
 		{
 			WriteChatColor("Tribute mode: manual");
 		}
-		else if( mode == TributeMode_Auto )
+		else if (mode == TributeMode_Auto)
 		{
 			WriteChatColor("Tribute mode: automatic");
 		}
-		else if( mode == TributeMode_OffWhenExpired )
+		else if (mode == TributeMode_OffWhenExpired)
 		{
 			WriteChatColor("Tribute mode: off when expired");
 		}
 
-		if( gGameState == GAMESTATE_INGAME )
+		if (gGameState == GAMESTATE_INGAME)
 		{
 			DebugSpewAlways("MQ2TributeManager:: Active Favor Cost: %i", pEQMisc->GetActiveFavorCost());
 			DebugSpewAlways("MQ2TributeManager:: Combat State: %i", (CombatState)((PCPLAYERWND)pPlayerWnd)->CombatState);
@@ -170,7 +213,7 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 PLUGIN_API VOID InitializePlugin(VOID)
 {
 	DebugSpewAlways("Initializing MQ2TributeManager");
-	AddCommand("/tribute",TributeManagerCmd);
+	AddCommand("/tribute", TributeManagerCmd);
 }
 
 // Called once, when the plugin is to shutdown
@@ -182,58 +225,66 @@ PLUGIN_API VOID ShutdownPlugin(VOID)
 
 PLUGIN_API VOID SetGameState(DWORD GameState)
 {
-    DebugSpewAlways("MQ2TributeManager::SetGameState()");
-    if (GameState==GAMESTATE_INGAME)
+	DebugSpewAlways("MQ2TributeManager::SetGameState()");
+	if (GameState == GAMESTATE_INGAME)
 	{
+		if (!initDone) {
+			LoadINI();
+		}
 		// have to do a little hack here or else other /notify commands will not work
 		DebugSpewAlways("MQ2TributeManager::SetGameState::initializing tribute window");
 		DoCommand((PSPAWNINFO)pCharSpawn, "/keypress TOGGLE_TRIBUTEBENEFITWIN");
 		DoCommand((PSPAWNINFO)pCharSpawn, "/keypress TOGGLE_TRIBUTEBENEFITWIN");
+	}
+	if (GameState != GAMESTATE_INGAME || GameState != GAMESTATE_LOGGINGIN) {
+		if (initDone) {
+			initDone = false;
+		}
 	}
 }
 
 // This is called every time MQ pulses
 PLUGIN_API VOID OnPulse(VOID)
 {
-	if( gGameState != GAMESTATE_INGAME )
-	{
+	if (gGameState != GAMESTATE_INGAME)
 		return;
-	}
+	if (!initDone)
+		return;
 
-    if (SkipPulse == SKIP_PULSES) {
-        SkipPulse = 0;
+	if (SkipPulse == SKIP_PULSES) {
+		SkipPulse = 0;
 
-		if( mode == TributeMode_Auto )
+		if (mode == TributeMode_Auto)
 		{
 			CombatState combatState = (CombatState)((PCPLAYERWND)pPlayerWnd)->CombatState;
 			bool inCombat = false;
-			if( combatState == CombatState_COMBAT )
+			if (combatState == CombatState_COMBAT)
 			{
 				inCombat = true;
 			}
-	
+
 			unsigned int activeFavorCost = pEQMisc->GetActiveFavorCost();
 			PCHARINFO myCharInfo = GetCharInfo();
-	
-			if( (inCombat) && (!*pTributeActive) && (activeFavorCost <= myCharInfo->CurrFavor) && (pEQMisc->GetActiveFavorCost() > 0) )
+
+			if ((inCombat) && (!*pTributeActive) && (activeFavorCost <= myCharInfo->CurrFavor) && (pEQMisc->GetActiveFavorCost() > 0))
 			{
 				//activate tribute
 				SetTributeStatus(true);
 			}
-			else if( (!inCombat) && (*pTributeActive) && (myCharInfo->TributeTimer < tributeFudge) )
+			else if ((!inCombat) && (*pTributeActive) && (myCharInfo->TributeTimer < tributeFudge))
 			{
 				SetTributeStatus(false);
 			}
 		}
-		else if( mode == TributeMode_OffWhenExpired )
+		else if (mode == TributeMode_OffWhenExpired)
 		{
-			if( ((*pTributeActive) ? true : false) == false )
+			if (((*pTributeActive) ? true : false) == false)
 			{
 				mode = TributeMode_Manual;
 				return;
 			}
-	
-			if( GetCharInfo()->TributeTimer < tributeFudge )
+
+			if (GetCharInfo()->TributeTimer < tributeFudge)
 			{
 				mode = TributeMode_Manual;
 				SetTributeStatus(false);
