@@ -236,7 +236,7 @@ PLUGIN_API VOID SetGameState(DWORD GameState)
 		DoCommand((PSPAWNINFO)pCharSpawn, "/keypress TOGGLE_TRIBUTEBENEFITWIN");
 		DoCommand((PSPAWNINFO)pCharSpawn, "/keypress TOGGLE_TRIBUTEBENEFITWIN");
 	}
-	if (GameState != GAMESTATE_INGAME || GameState != GAMESTATE_LOGGINGIN) {
+	if (GameState != GAMESTATE_INGAME && GameState != GAMESTATE_LOGGINGIN) {
 		if (initDone) {
 			initDone = false;
 		}
