@@ -6,6 +6,8 @@
 // Author: alt228, alt228@nerdshack.com
 // 
 // Now Saves/Loads previous settings. Still defaults to manual - wired420
+// Added option to turn tribute on for names, then back off when no named
+//   and timer is close to out. - wired420
 
 #include "../MQ2Plugin.h"
 
@@ -14,6 +16,7 @@ enum TributeMode
 	TributeMode_Manual,
 	TributeMode_Auto,
 	TributeMode_OffWhenExpired,
+	TributeMode_Named,
 	TributeMode_Unused
 };
 
@@ -46,7 +49,10 @@ VOID SaveINI(VOID) {
 	updateINIFn();
 	sprintf_s(szTemp, "MQ2TributeManager");
 	WritePrivateProfileSection(szTemp, "", INIFileName);
-	if (mode == TributeMode_Auto) {
+	if (mode == TributeMode_Named) {
+		WritePrivateProfileString(szTemp, "Mode", "3", INIFileName);
+	}
+	else if (mode == TributeMode_Auto) {
 		WritePrivateProfileString(szTemp, "Mode", "2", INIFileName);
 	}
 	else if (mode == TributeMode_OffWhenExpired) {
@@ -62,14 +68,17 @@ VOID LoadINI(VOID) {
 	sprintf_s(szTemp, "MQ2TributeManager");
 	DWORD loadMode = GetPrivateProfileString(szTemp, "Mode", "", ourMode, MAX_STRING, INIFileName);
 	int setTheMode = atoi(ourMode);
-	if (setTheMode == 0) { 
-		mode = TributeMode_Manual; 
+	if (setTheMode == 0) {
+		mode = TributeMode_Manual;
 	}
-	else if (setTheMode == 1) { 
-		mode = TributeMode_OffWhenExpired; 
+	else if (setTheMode == 1) {
+		mode = TributeMode_OffWhenExpired;
 	}
-	else if (setTheMode == 2) { 
-		mode = TributeMode_Auto; 
+	else if (setTheMode == 2) {
+		mode = TributeMode_Auto;
+	}
+	else if (setTheMode == 3) {
+		mode = TributeMode_Named;
 	}
 	initDone = true;
 }
@@ -150,6 +159,12 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 			newMode = TributeMode_Auto;
 			WriteChatColor("Tribute mode: automatic");
 		}
+		else if (_stricmp(thisArg, "named") == 0)
+		{
+			setMode = true;
+			newMode = TributeMode_Named;
+			WriteChatColor("Tribute mode: named");
+		}
 		else if (_stricmp(thisArg, "manual") == 0)
 		{
 			setMode = true;
@@ -168,7 +183,7 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 
 	if (syntaxError)
 	{
-		SyntaxError("Usage: /tribute <auto|manual|on|off|forceoff|show>");
+		SyntaxError("Usage: /tribute <auto|named|manual|on|off|forceoff|show>");
 		return;
 	}
 
@@ -193,6 +208,10 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 		{
 			WriteChatColor("Tribute mode: automatic");
 		}
+		else if (mode == TributeMode_Named)
+		{
+			WriteChatColor("Tribute mode: Named");
+		}
 		else if (mode == TributeMode_OffWhenExpired)
 		{
 			WriteChatColor("Tribute mode: off when expired");
@@ -207,6 +226,15 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 			DebugSpewAlways("MQ2TributeManager:: Tribute Timer: %i ms", GetCharInfo()->TributeTimer);
 		}
 	}
+}
+// Are we in combat? We used this check enough that it was time to quit replicating code - wired420
+bool inCombat(void) {
+	CombatState combatState = (CombatState)((PCPLAYERWND)pPlayerWnd)->CombatState;
+	if (combatState == CombatState_COMBAT)
+	{
+		return true;
+	}
+	return false;
 }
 
 // Called once, when the plugin is to initialize
@@ -254,24 +282,32 @@ PLUGIN_API VOID OnPulse(VOID)
 	if (SkipPulse == SKIP_PULSES) {
 		SkipPulse = 0;
 
-		if (mode == TributeMode_Auto)
+		if (mode == TributeMode_Named)
 		{
-			CombatState combatState = (CombatState)((PCPLAYERWND)pPlayerWnd)->CombatState;
-			bool inCombat = false;
-			if (combatState == CombatState_COMBAT)
-			{
-				inCombat = true;
-			}
-
 			unsigned int activeFavorCost = pEQMisc->GetActiveFavorCost();
 			PCHARINFO myCharInfo = GetCharInfo();
 
-			if ((inCombat) && (!*pTributeActive) && (activeFavorCost <= myCharInfo->CurrFavor) && (pEQMisc->GetActiveFavorCost() > 0))
+			if ((inCombat() && !*pTributeActive) && (ppTarget && IsNamed(PSPAWNINFO(pTarget))) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
+			{
+				SetTributeStatus(true);
+			}
+			else if (*pTributeActive && (!inCombat() || (inCombat() && ppTarget && !IsNamed(PSPAWNINFO(pTarget)))) && (myCharInfo->TributeTimer < tributeFudge))
+			{
+				SetTributeStatus(false);
+			}
+		}
+
+		if (mode == TributeMode_Auto)
+		{
+			unsigned int activeFavorCost = pEQMisc->GetActiveFavorCost();
+			PCHARINFO myCharInfo = GetCharInfo();
+
+			if ((inCombat()) && (!*pTributeActive) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
 			{
 				//activate tribute
 				SetTributeStatus(true);
 			}
-			else if ((!inCombat) && (*pTributeActive) && (myCharInfo->TributeTimer < tributeFudge))
+			else if ((!inCombat()) && (*pTributeActive) && (myCharInfo->TributeTimer < tributeFudge))
 			{
 				SetTributeStatus(false);
 			}
