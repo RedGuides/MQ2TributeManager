@@ -177,7 +177,7 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 		}
 		else
 		{
-			syntaxError = true;
+		syntaxError = true;
 		}
 	}
 
@@ -227,15 +227,6 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 		}
 	}
 }
-// Are we in combat? We used this check enough that it was time to quit replicating code - wired420
-bool inCombat(void) {
-	CombatState combatState = (CombatState)((PCPLAYERWND)pPlayerWnd)->CombatState;
-	if (combatState == CombatState_COMBAT)
-	{
-		return true;
-	}
-	return false;
-}
 
 // Called once, when the plugin is to initialize
 PLUGIN_API VOID InitializePlugin(VOID)
@@ -271,6 +262,39 @@ PLUGIN_API VOID SetGameState(DWORD GameState)
 	}
 }
 
+// Are we in combat? We used this check enough that it was time to quit replicating code - wired420
+bool inCombat(void) {
+	CombatState combatState = (CombatState)((PCPLAYERWND)pPlayerWnd)->CombatState;
+	if (combatState == CombatState_COMBAT)
+	{
+		return true;
+	}
+	return false;
+}
+
+// Check group main assist for a named target.
+bool checkGroupAssistTarget(VOID)
+{
+	if (IsNamed((PSPAWNINFO)GetSpawnByID(GetGroupMainAssistTargetID())))
+	{
+		return true;
+	}
+	return false;
+}
+
+// Check the three possible raid main assists for a named target.
+bool checkRaidAssistTarget(VOID)
+{
+	for (int iAssist = 0; iAssist < 3; iAssist++)
+	{
+		if (IsNamed((PSPAWNINFO)GetSpawnByID(GetRaidMainAssistTargetID(iAssist))))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 // This is called every time MQ pulses
 PLUGIN_API VOID OnPulse(VOID)
 {
@@ -287,11 +311,11 @@ PLUGIN_API VOID OnPulse(VOID)
 			unsigned int activeFavorCost = pEQMisc->GetActiveFavorCost();
 			PCHARINFO myCharInfo = GetCharInfo();
 
-			if ((inCombat() && !*pTributeActive) && (ppTarget && IsNamed(PSPAWNINFO(pTarget))) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
+			if ((inCombat() && !*pTributeActive) && ((ppTarget && IsNamed(PSPAWNINFO(pTarget))) || (checkRaidAssistTarget() || checkGroupAssistTarget())) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
 			{
 				SetTributeStatus(true);
 			}
-			else if (*pTributeActive && (!inCombat() || (inCombat() && ppTarget && !IsNamed(PSPAWNINFO(pTarget)))) && (myCharInfo->TributeTimer < tributeFudge))
+			else if (*pTributeActive && (!inCombat() || (inCombat() && ppTarget && (!IsNamed(PSPAWNINFO(pTarget)) || !checkRaidAssistTarget() || !checkGroupAssistTarget()))) && (myCharInfo->TributeTimer < tributeFudge))
 			{
 				SetTributeStatus(false);
 			}
