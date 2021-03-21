@@ -4,12 +4,15 @@
 // MQ2TributeManager
 // Manages tribute for you based on combat status
 // Author: alt228, alt228@nerdshack.com
-// 
+//
 // Now Saves/Loads previous settings. Still defaults to manual - wired420
 // Added option to turn tribute on for names, then back off when no named
 //   and timer is close to out. - wired420
 
-#include "../MQ2Plugin.h"
+#include <mq/Plugin.h>
+
+PreSetup("MQ2TributeManager");
+PLUGIN_VERSION(1.0);
 
 enum TributeMode
 {
@@ -29,23 +32,22 @@ enum CombatState
 	CombatState_RESTING
 };
 
-PreSetup("MQ2TributeManager");
-
 // Save & Load
-char szTemp[MAX_STRING], ourMode[MAX_STRING];
+char szTemp[MAX_STRING] = { 0 };
+char ourMode[MAX_STRING] = { 0 };
 bool initDone = false;
 
 //defaults
 TributeMode mode = TributeMode_Manual;
-unsigned int tributeFudge = 2000;
+int tributeFudge = 2000;
 #define SKIP_PULSES 80
 long SkipPulse = 0;
 
 void updateINIFn() {
-	sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
+	sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, EQADDR_SERVERNAME, GetCharInfo()->Name);
 }
 
-VOID SaveINI(VOID) {
+void SaveINI() {
 	updateINIFn();
 	sprintf_s(szTemp, "MQ2TributeManager");
 	WritePrivateProfileSection(szTemp, "", INIFileName);
@@ -63,7 +65,7 @@ VOID SaveINI(VOID) {
 	}
 }
 
-VOID LoadINI(VOID) {
+void LoadINI() {
 	updateINIFn();
 	sprintf_s(szTemp, "MQ2TributeManager");
 	DWORD loadMode = GetPrivateProfileString(szTemp, "Mode", "", ourMode, MAX_STRING, INIFileName);
@@ -83,7 +85,7 @@ VOID LoadINI(VOID) {
 	initDone = true;
 }
 
-VOID SetTributeStatus(bool tributeOn)
+void SetTributeStatus(bool tributeOn)
 {
 	if (tributeOn)
 	{
@@ -105,7 +107,7 @@ VOID SetTributeStatus(bool tributeOn)
 	}
 }
 
-VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
+void TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 {
 	bool syntaxError = false;
 	if (line[0] == 0)
@@ -131,7 +133,7 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 		GetArg(thisArg, line, argNumber);
 		argNumber++;
 
-		if (!thisArg || (strlen(thisArg) == 0))
+		if (thisArg[0] == '\0')
 		{
 			moreArgs = false;
 		}
@@ -220,7 +222,7 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 		if (gGameState == GAMESTATE_INGAME)
 		{
 			DebugSpewAlways("MQ2TributeManager:: Active Favor Cost: %i", pEQMisc->GetActiveFavorCost());
-			DebugSpewAlways("MQ2TributeManager:: Combat State: %i", (CombatState)((PCPLAYERWND)pPlayerWnd)->CombatState);
+			DebugSpewAlways("MQ2TributeManager:: Combat State: %i", pPlayerWnd->CombatState);
 			DebugSpewAlways("MQ2TributeManager:: Tribute Active: %i", *pTributeActive);
 			DebugSpewAlways("MQ2TributeManager:: Current Favor: %i", GetCharInfo()->CurrFavor);
 			DebugSpewAlways("MQ2TributeManager:: Tribute Timer: %i ms", GetCharInfo()->TributeTimer);
@@ -229,22 +231,23 @@ VOID TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 }
 
 // Called once, when the plugin is to initialize
-PLUGIN_API VOID InitializePlugin(VOID)
+PLUGIN_API void InitializePlugin()
 {
 	DebugSpewAlways("Initializing MQ2TributeManager");
 	AddCommand("/tribute", TributeManagerCmd);
 }
 
 // Called once, when the plugin is to shutdown
-PLUGIN_API VOID ShutdownPlugin(VOID)
+PLUGIN_API void ShutdownPlugin()
 {
 	DebugSpewAlways("Shutting down MQ2TributeManager");
 	RemoveCommand("/tribute");
 }
 
-PLUGIN_API VOID SetGameState(DWORD GameState)
+PLUGIN_API void SetGameState(int GameState)
 {
 	DebugSpewAlways("MQ2TributeManager::SetGameState()");
+	// FIXME:  GameState is set while zoning and there's no reason to load the ini every zone
 	if (GameState == GAMESTATE_INGAME)
 	{
 		if (!initDone) {
@@ -263,17 +266,12 @@ PLUGIN_API VOID SetGameState(DWORD GameState)
 }
 
 // Are we in combat? We used this check enough that it was time to quit replicating code - wired420
-bool inCombat(void) {
-	CombatState combatState = (CombatState)((PCPLAYERWND)pPlayerWnd)->CombatState;
-	if (combatState == CombatState_COMBAT)
-	{
-		return true;
-	}
-	return false;
+bool inCombat() {
+	return pPlayerWnd->CombatState == CombatState_COMBAT;
 }
 
 // Check group main assist for a named target.
-bool checkGroupAssistTarget(VOID)
+bool checkGroupAssistTarget()
 {
 	if (IsNamed((PSPAWNINFO)GetSpawnByID(GetGroupMainAssistTargetID())))
 	{
@@ -283,7 +281,7 @@ bool checkGroupAssistTarget(VOID)
 }
 
 // Check the three possible raid main assists for a named target.
-bool checkRaidAssistTarget(VOID)
+bool checkRaidAssistTarget()
 {
 	for (int iAssist = 0; iAssist < 3; iAssist++)
 	{
@@ -296,7 +294,7 @@ bool checkRaidAssistTarget(VOID)
 }
 
 // This is called every time MQ pulses
-PLUGIN_API VOID OnPulse(VOID)
+PLUGIN_API void OnPulse()
 {
 	if (gGameState != GAMESTATE_INGAME)
 		return;
@@ -311,11 +309,11 @@ PLUGIN_API VOID OnPulse(VOID)
 			unsigned int activeFavorCost = pEQMisc->GetActiveFavorCost();
 			PCHARINFO myCharInfo = GetCharInfo();
 
-			if ((inCombat() && !*pTributeActive) && ((ppTarget && IsNamed(PSPAWNINFO(pTarget))) || (checkRaidAssistTarget() || checkGroupAssistTarget())) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
+			if ((inCombat() && !*pTributeActive) && ((pTarget && IsNamed(PSPAWNINFO(pTarget))) || (checkRaidAssistTarget() || checkGroupAssistTarget())) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
 			{
 				SetTributeStatus(true);
 			}
-			else if (*pTributeActive && (!inCombat() || (inCombat() && ppTarget && (!IsNamed(PSPAWNINFO(pTarget)) || !checkRaidAssistTarget() || !checkGroupAssistTarget()))) && (myCharInfo->TributeTimer < tributeFudge))
+			else if (*pTributeActive && (!inCombat() || (inCombat() && pTarget && (!IsNamed(PSPAWNINFO(pTarget)) || !checkRaidAssistTarget() || !checkGroupAssistTarget()))) && (myCharInfo->TributeTimer < tributeFudge))
 			{
 				SetTributeStatus(false);
 			}
