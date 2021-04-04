@@ -267,7 +267,7 @@ PLUGIN_API void SetGameState(int GameState)
 
 // Are we in combat? We used this check enough that it was time to quit replicating code - wired420
 bool inCombat() {
-	return pPlayerWnd->CombatState == CombatState_COMBAT;
+	return pPlayerWnd->CombatState == eCombatState_Combat;
 }
 
 // Check group main assist for a named target.
