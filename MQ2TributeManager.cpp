@@ -92,8 +92,13 @@ void SetTributeStatus(bool tributeOn)
 		if (!(bool)((*pTributeActive) ? true : false))
 		{
 			DebugSpewAlways("MQ2TributeManager::Turning on tribute");
-			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup");
-			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup");
+			// intentionally excluded Guild and Guild Trophy
+			SendTabSelect("TributeBenefitWnd", "TBW_Subwindows", 0);	// tabs = Personal (0), Trophy (1)			
+			SendWndClick("TributeBenefitWnd", "TBWP_ActivateButton", "leftmouseup");
+
+			SendTabSelect("TributeBenefitWnd", "TBW_Subwindows", 1);	// tabs = Personal (0), Trophy (1)			
+			SendWndClick("TributeBenefitWnd", "TBWT_ActivateButton", "leftmouseup");
+
 		}
 	}
 	else
@@ -101,8 +106,12 @@ void SetTributeStatus(bool tributeOn)
 		if ((bool)((*pTributeActive) ? true : false))
 		{
 			DebugSpewAlways("MQ2TributeManager::Turning off tribute");
-			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup");
-			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup");
+			// intentionally excluded Guild and Guild Trophy
+			SendTabSelect("TributeBenefitWnd", "TBW_Subwindows", 0);	// tabs = Personal (0), Trophy (1)			
+			SendWndClick("TributeBenefitWnd", "TBWP_ActivateButton", "leftmouseup");
+
+			SendTabSelect("TributeBenefitWnd", "TBW_Subwindows", 1);	// tabs = Personal (0), Trophy (1)			
+			SendWndClick("TributeBenefitWnd", "TBWT_ActivateButton", "leftmouseup");
 		}
 	}
 }
