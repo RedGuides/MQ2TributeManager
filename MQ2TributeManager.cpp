@@ -221,7 +221,7 @@ void TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
 
 		if (gGameState == GAMESTATE_INGAME)
 		{
-			DebugSpewAlways("MQ2TributeManager:: Active Favor Cost: %i", pEQMisc->GetActiveFavorCost());
+			DebugSpewAlways("MQ2TributeManager:: Active Favor Cost: %i", pTribute->GetActiveFavorCost());
 			DebugSpewAlways("MQ2TributeManager:: Combat State: %i", pPlayerWnd->CombatState);
 			DebugSpewAlways("MQ2TributeManager:: Tribute Active: %i", *pTributeActive);
 			DebugSpewAlways("MQ2TributeManager:: Current Favor: %i", GetCharInfo()->CurrFavor);
@@ -306,7 +306,7 @@ PLUGIN_API void OnPulse()
 
 		if (mode == TributeMode_Named)
 		{
-			unsigned int activeFavorCost = pEQMisc->GetActiveFavorCost();
+			unsigned int activeFavorCost = pTribute->GetActiveFavorCost();
 			PCHARINFO myCharInfo = GetCharInfo();
 
 			if ((inCombat() && !*pTributeActive) && ((pTarget && IsNamed(PSPAWNINFO(pTarget))) || (checkRaidAssistTarget() || checkGroupAssistTarget())) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
@@ -321,7 +321,7 @@ PLUGIN_API void OnPulse()
 
 		if (mode == TributeMode_Auto)
 		{
-			unsigned int activeFavorCost = pEQMisc->GetActiveFavorCost();
+			unsigned int activeFavorCost = pTribute->GetActiveFavorCost();
 			PCHARINFO myCharInfo = GetCharInfo();
 
 			if ((inCombat()) && (!*pTributeActive) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
