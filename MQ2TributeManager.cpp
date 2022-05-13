@@ -44,7 +44,7 @@ int tributeFudge = 2000;
 long SkipPulse = 0;
 
 void updateINIFn() {
-	sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, EQADDR_SERVERNAME, GetCharInfo()->Name);
+	sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, GetServerShortName(), pLocalPC->Name);
 }
 
 void SaveINI() {
