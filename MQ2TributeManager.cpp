@@ -92,8 +92,8 @@ void SetTributeStatus(bool tributeOn)
 		if (!(bool)((*pTributeActive) ? true : false))
 		{
 			DebugSpewAlways("MQ2TributeManager::Turning on tribute");
-			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup");
-			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup");
+			DoCommand("/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup");
+			DoCommand("/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup");
 		}
 	}
 	else
@@ -101,13 +101,13 @@ void SetTributeStatus(bool tributeOn)
 		if ((bool)((*pTributeActive) ? true : false))
 		{
 			DebugSpewAlways("MQ2TributeManager::Turning off tribute");
-			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup");
-			DoCommand((PSPAWNINFO)pCharSpawn, "/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup");
+			DoCommand("/notify TributeBenefitWnd TBWP_ActivateButton leftmouseup");
+			DoCommand("/notify TributeBenefitWnd TBWT_ActivateButton leftmouseup");
 		}
 	}
 }
 
-void TributeManagerCmd(PSPAWNINFO characterSpawn, PCHAR line)
+void TributeManagerCmd(PlayerClient* characterSpawn, const char* line)
 {
 	bool syntaxError = false;
 	if (line[0] == 0)
@@ -255,8 +255,8 @@ PLUGIN_API void SetGameState(int GameState)
 		}
 		// have to do a little hack here or else other /notify commands will not work
 		DebugSpewAlways("MQ2TributeManager::SetGameState::initializing tribute window");
-		DoCommand((PSPAWNINFO)pCharSpawn, "/keypress TOGGLE_TRIBUTEBENEFITWIN");
-		DoCommand((PSPAWNINFO)pCharSpawn, "/keypress TOGGLE_TRIBUTEBENEFITWIN");
+		DoCommand("/keypress TOGGLE_TRIBUTEBENEFITWIN");
+		DoCommand("/keypress TOGGLE_TRIBUTEBENEFITWIN");
 	}
 	if (GameState != GAMESTATE_INGAME && GameState != GAMESTATE_LOGGINGIN) {
 		if (initDone) {
@@ -273,7 +273,7 @@ bool inCombat() {
 // Check group main assist for a named target.
 bool checkGroupAssistTarget()
 {
-	if (IsNamed((PSPAWNINFO)GetSpawnByID(GetGroupMainAssistTargetID())))
+	if (IsNamed(GetSpawnByID(GetGroupMainAssistTargetID())))
 	{
 		return true;
 	}
@@ -285,7 +285,7 @@ bool checkRaidAssistTarget()
 {
 	for (int iAssist = 0; iAssist < 3; iAssist++)
 	{
-		if (IsNamed((PSPAWNINFO)GetSpawnByID(GetRaidMainAssistTargetID(iAssist))))
+		if (IsNamed(GetSpawnByID(GetRaidMainAssistTargetID(iAssist))))
 		{
 			return true;
 		}
@@ -309,11 +309,11 @@ PLUGIN_API void OnPulse()
 			unsigned int activeFavorCost = pTribute->GetActiveFavorCost();
 			PCHARINFO myCharInfo = GetCharInfo();
 
-			if ((inCombat() && !*pTributeActive) && ((pTarget && IsNamed(PSPAWNINFO(pTarget))) || (checkRaidAssistTarget() || checkGroupAssistTarget())) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
+			if ((inCombat() && !*pTributeActive) && ((pTarget && IsNamed(pTarget)) || (checkRaidAssistTarget() || checkGroupAssistTarget())) && (activeFavorCost <= myCharInfo->CurrFavor) && (activeFavorCost > 0))
 			{
 				SetTributeStatus(true);
 			}
-			else if (*pTributeActive && (!inCombat() || (inCombat() && pTarget && (!IsNamed(PSPAWNINFO(pTarget)) || !checkRaidAssistTarget() || !checkGroupAssistTarget()))) && (myCharInfo->TributeTimer < tributeFudge))
+			else if (*pTributeActive && (!inCombat() || (inCombat() && pTarget && (!IsNamed(pTarget) || !checkRaidAssistTarget() || !checkGroupAssistTarget()))) && (myCharInfo->TributeTimer < tributeFudge))
 			{
 				SetTributeStatus(false);
 			}
