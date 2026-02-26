@@ -12,7 +12,9 @@
 #include <mq/Plugin.h>
 
 PreSetup("MQ2TributeManager");
-PLUGIN_VERSION(1.0);
+PLUGIN_VERSION(1.1);
+
+fEQCommand cmdTribute = nullptr;
 
 enum TributeMode
 {
@@ -123,19 +125,28 @@ void TributeManagerCmd(PlayerClient* characterSpawn, const char* line)
 
 	bool showStatus = false;
 
-	CHAR thisArg[MAX_STRING] = { 0 };
+	char thisArg[MAX_STRING] = { 0 };
 	int argNumber = 1;
 	bool moreArgs = true;
 
+	// FIXME: Why is this counting to 9 when the max arg length appears to be 2?
 	while (moreArgs && argNumber < 10)
 	{
 		DebugSpewAlways("MQ2TributeManager:: GetArg(%i)", argNumber);
 		GetArg(thisArg, line, argNumber);
-		argNumber++;
 
 		if (thisArg[0] == '\0')
 		{
 			moreArgs = false;
+		}
+		// Account for the usage of the original EQ command
+		else if (argNumber == 1 && (ci_equals(thisArg, "personal") || ci_equals(thisArg, "guild")))
+		{
+			if (cmdTribute != nullptr)
+			{
+				cmdTribute(characterSpawn, line);
+			}
+			return;
 		}
 		else if (_stricmp(thisArg, "on") == 0)
 		{
@@ -181,6 +192,7 @@ void TributeManagerCmd(PlayerClient* characterSpawn, const char* line)
 		{
 		syntaxError = true;
 		}
+		argNumber++;
 	}
 
 	if (syntaxError)
@@ -234,6 +246,19 @@ void TributeManagerCmd(PlayerClient* characterSpawn, const char* line)
 PLUGIN_API void InitializePlugin()
 {
 	DebugSpewAlways("Initializing MQ2TributeManager");
+
+	// Capture the original EQ /tribute command before we override it
+	const CMDLIST* pCmdListOrig = EQADDR_CMDLIST;
+	for (int i = 0; pCmdListOrig[i].fAddress != nullptr; ++i)
+	{
+		if (!strcmp(pCmdListOrig[i].szName, "/tribute"))
+		{
+			cmdTribute = static_cast<fEQCommand>(pCmdListOrig[i].fAddress);
+			RemoveCommand("/tribute");
+			break;
+		}
+	}
+
 	AddCommand("/tribute", TributeManagerCmd);
 }
 
@@ -242,6 +267,12 @@ PLUGIN_API void ShutdownPlugin()
 {
 	DebugSpewAlways("Shutting down MQ2TributeManager");
 	RemoveCommand("/tribute");
+
+	// Restore the original EQ /tribute command
+	if (cmdTribute != nullptr)
+	{
+		AddCommand("/tribute", cmdTribute, true);
+	}
 }
 
 PLUGIN_API void SetGameState(int GameState)
