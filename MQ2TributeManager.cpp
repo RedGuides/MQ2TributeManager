@@ -248,16 +248,7 @@ PLUGIN_API void InitializePlugin()
 	DebugSpewAlways("Initializing MQ2TributeManager");
 
 	// Capture the original EQ /tribute command before we override it
-	const CMDLIST* pCmdListOrig = EQADDR_CMDLIST;
-	for (int i = 0; pCmdListOrig[i].fAddress != nullptr; ++i)
-	{
-		if (!strcmp(pCmdListOrig[i].szName, "/tribute"))
-		{
-			cmdTribute = static_cast<fEQCommand>(pCmdListOrig[i].fAddress);
-			RemoveCommand("/tribute");
-			break;
-		}
-	}
+	cmdTribute = FindEQCommand("/tribute");
 
 	AddCommand("/tribute", TributeManagerCmd);
 }
